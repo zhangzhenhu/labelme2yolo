@@ -445,8 +445,10 @@ class Labelme2YOLO:
             names_str = names_str.rstrip(", ")
 
             content = (
-
-                f"train: {train_dir}\nval: {val_dir}\ntest: {test_dir}\n"
+                f"path:{save_path}\n"
+                f"train: {train_dir}\n"
+                f"val: {val_dir}\n"
+                f"test: {test_dir}\n"
                 f"nc: {len(self._label_id_map)}\n"
                 f"names: [{names_str}]"
             )
