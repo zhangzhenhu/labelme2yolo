@@ -410,8 +410,9 @@ class Labelme2YOLO:
     def _get_rectangle_shape_yolo_object(self, shape, img_h, img_w):
         point_list = shape["points"]
         points = np.zeros(2 * len(point_list))
-        points[::2] = [float(point[0]) / img_w for point in point_list]
-        points[1::2] = [float(point[1]) / img_h for point in point_list]
+        # 负值修正
+        points[::2] = [min(float(point[0]), 0) / img_w for point in point_list]
+        points[1::2] = [min(float(point[1]), 0) / img_h for point in point_list]
 
         if len(points) == 4:
             if self._output_format == "polygon":
@@ -432,11 +433,11 @@ class Labelme2YOLO:
 
     def _save_dataset_yaml(self):
         yaml_path = os.path.join(self.save_dir, "dataset.yaml")
-
+        save_path = Path(self.save_dir).absolute()
         with open(yaml_path, "w+", encoding="utf-8") as yaml_file:
-            train_dir = os.path.join(self.save_dir, "train")
-            val_dir = os.path.join(self.save_dir, "val")
-            test_dir = os.path.join(self.save_dir, "test")
+            train_dir = os.path.join(self.save_dir, "images", "train")
+            val_dir = os.path.join(self.save_dir, "images", "val")
+            test_dir = os.path.join(self.save_dir, "images", "test")
 
             names_str = ""
             for label, _ in self._label_id_map.items():
@@ -444,6 +445,7 @@ class Labelme2YOLO:
             names_str = names_str.rstrip(", ")
 
             content = (
+
                 f"train: {train_dir}\nval: {val_dir}\ntest: {test_dir}\n"
                 f"nc: {len(self._label_id_map)}\n"
                 f"names: [{names_str}]"

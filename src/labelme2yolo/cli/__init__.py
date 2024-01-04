@@ -54,7 +54,8 @@ def run():
     parser.add_argument(
         "--output_format",
         type=str,
-        default="polygon",
+        choices=["bbox", "polygon"],
+        default="bbox",
         help='The default output format for labelme2yolo is "polygon".'
              ' However, you can choose to output in bbox format by specifying the "bbox" option.',
     )
