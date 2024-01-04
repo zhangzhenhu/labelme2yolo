@@ -447,7 +447,7 @@ class Labelme2YOLO:
             names_str = names_str.rstrip(", ")
 
             content = (
-                f"path:{save_path}\n"
+                f"path: {save_path}\n"
                 f"train: {train_dir}\n"
                 f"val: {val_dir}\n"
                 f"test: {test_dir}\n"
