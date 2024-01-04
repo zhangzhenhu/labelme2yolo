@@ -103,12 +103,16 @@ def img_data_to_png_data(img_data):
             return f_in.read()
 
 
-def extend_point_list(point_list, out_format="polygon"):
+def extend_point_list(point_list: np.ndarray, out_format="polygon"):
     """Extend point list to polygon or bbox"""
-    x_min = min(float(point) for point in point_list[::2])
-    x_max = max(float(point) for point in point_list[::2])
-    y_min = min(float(point) for point in point_list[1::2])
-    y_max = max(float(point) for point in point_list[1::2])
+    # x_min = min(float(point) for point in point_list[::2])
+    # x_max = max(float(point) for point in point_list[::2])
+    # y_min = min(float(point) for point in point_list[1::2])
+    # y_max = max(float(point) for point in point_list[1::2])
+    x_min = point_list[:, 0].min()
+    x_max = point_list[:, 0].max()
+    y_min = point_list[:, 1].min()
+    y_max = point_list[:, 1].max()
 
     if out_format == "bbox":
         x_i = x_min
@@ -371,7 +375,7 @@ class Labelme2YOLO:
             # it only has 2 points, 1st is circle center, 2nd is drag end point
             if shape["shape_type"] == "circle":
                 yolo_obj = self._get_circle_shape_yolo_object(shape, img_h, img_w)
-            elif shape["shape_type"] == "rectangle":
+            elif shape["shape_type"] in ["rectangle", "polygon"]:
                 yolo_obj = self._get_rectangle_shape_yolo_object(shape, img_h, img_w)
             else:
                 logger.warning(f"Not support object shape {shape['shape_type']}")
@@ -409,18 +413,14 @@ class Labelme2YOLO:
 
     def _get_rectangle_shape_yolo_object(self, shape, img_h, img_w):
         point_list = shape["points"]
-        points = np.zeros(2 * len(point_list))
-        # 负值修正
-        points[::2] = [min(float(point[0]), 0) / img_w for point in point_list]
-        points[1::2] = [min(float(point[1]), 0) / img_h for point in point_list]
+        points = np.asarray(point_list)  # np.zeros(2 * len(point_list))
+        points[:, 0] /= img_w
+        points[:, 1] /= img_h
+        # points[::2] = [float(point[0]) / img_w for point in point_list]
+        # points[1::2] = [float(point[1]) / img_h for point in point_list]
 
-        if len(points) == 4:
-            if self._output_format == "polygon":
-                points = extend_point_list(points)
-            if self._output_format == "bbox":
-                points = extend_point_list(points, "bbox")
-        else:
-            return None
+        points = extend_point_list(points, self._output_format)
+
         # if shape["label"]:
         #     label = shape["label"]
         #     if label not in self._label_list:
@@ -435,9 +435,9 @@ class Labelme2YOLO:
         yaml_path = os.path.join(self.save_dir, "dataset.yaml")
         save_path = Path(self.save_dir).absolute()
         with open(yaml_path, "w+", encoding="utf-8") as yaml_file:
-            train_dir = os.path.join(self.save_dir, "images", "train")
-            val_dir = os.path.join(self.save_dir, "images", "val")
-            test_dir = os.path.join(self.save_dir, "images", "test")
+            train_dir = os.path.join("images", "train")
+            val_dir = os.path.join("images", "val")
+            test_dir = os.path.join("images", "test")
 
             names_str = ""
             for label, _ in self._label_id_map.items():
