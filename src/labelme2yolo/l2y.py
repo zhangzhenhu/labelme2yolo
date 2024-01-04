@@ -413,9 +413,11 @@ class Labelme2YOLO:
 
     def _get_rectangle_shape_yolo_object(self, shape, img_h, img_w):
         point_list = shape["points"]
-        points = np.asarray(point_list)  # np.zeros(2 * len(point_list))
+        points = np.asarray(point_list, dtype=float)  # np.zeros(2 * len(point_list))
         points[:, 0] /= float(img_w)
         points[:, 1] /= float(img_h)
+        # 修正一下上下界
+        points = points.clip(min=0, max=1)
         # points[::2] = [float(point[0]) / img_w for point in point_list]
         # points[1::2] = [float(point[1]) / img_h for point in point_list]
 
