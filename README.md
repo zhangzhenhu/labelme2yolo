@@ -1,87 +1,92 @@
 # Labelme2YOLO
 
-**Forked from [rooneysh/Labelme2YOLO](https://github.com/rooneysh/Labelme2YOLO)**
+**Forked from [GreatV/Labelme2YOLO](https://github.com/GreatV/labelme2yolo)**
 
-[![PyPI - Version](https://img.shields.io/pypi/v/labelme2yolo.svg)](https://pypi.org/project/labelme2yolo)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/labelme2yolo?style=flat)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/labelme2yolo.svg)](https://pypi.org/project/labelme2yolo)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/12122fe86f8643c4aa5667c20d528f61)](https://www.codacy.com/gh/GreatV/labelme2yolo/dashboard?utm_source=github.com\&utm_medium=referral\&utm_content=GreatV/labelme2yolo\&utm_campaign=Badge_Grade)
 
-Labelme2YOLO is a powerful tool for converting LabelMe's JSON format to [YOLOv5](https://github.com/ultralytics/yolov5) dataset format. This tool can also be used for YOLOv5/YOLOv8 segmentation datasets, if you have already made your segmentation dataset with LabelMe, it is easy to use this tool to help convert to YOLO format dataset.
+Labelme2YOLO is a powerful tool for converting LabelMe's JSON format to [YOLOv5](https://github.com/ultralytics/yolov5) dataset format. 
+This tool can also be used for YOLOv5/YOLOv8 segmentation datasets, 
+if you have already made your segmentation dataset with LabelMe, 
+it is easy to use this tool to help convert to YOLO format dataset.
+
+
 
 ## New Features
 
-* export data as yolo polygon annotation (for YOLOv5 v7.0 segmentation)
-* Now you can choose the output format of the label text. The two available alternatives are `polygon` and bounding box (`bbox`).
+
+
+This tool is used to convert labelme output Json format labeling samples to YOLO available TXT format samples.
+
+Forked from GreatV/Labelme2YOLO, with some improvements and optimizations over the original
+
+* `--json_dir` parameter can input multiple paths (wildcard support).
+* New `--output` parameter can specify output path.
+* New `--rename` parameter can control whether to rename the file with uid.
+* New `--labels` parameter, you can choose **which labels to keep** .
+* New `--exclude_labels` parameter to select **which labels to exclude** .
+* Removed unnecessary file reading and copying in some cases to speed up processing.
+* Other minor improvements.
+
+---
+
+本工具用于把 labelme 输出的 Json 格式标注样本转换成 YOLO 可用 TXT 格式样本。
+
+从 GreatV/Labelme2YOLO Fork 而来，并在原版基础上做了一些改进和优化
+
+* `--json_dir` 参数可以输入多个路径（支持通配符）
+* 新增 `--output` 参数，可以指定输出路径
+* 新增 `--rename` 参数，可以控制是否用uid重新命名文件。
+* 新增 `--labels` 参数，可以选择 **只保留** 哪些标签。
+* 新增 `--exclude_labels` 参数，可以选择 **去掉** 哪些标签。
+* 去掉了某些情况下不必要的文件读取和拷贝，加快处理速度。
+* 其它一些小的改进。
+
 
 ## Installation
 
 ```shell
-pip install labelme2yolo
+pip install git+https://github.com/zhangzhenhu/labelme2yolo.git
+```
+
+## 使用方法
+
+```shell
+ labelme2yolo --json_dir all_jsons/  ../tee/*/*/jsons/   --val_size 0.15  --output mydataset/
+ 
 ```
 
 ## Arguments
 
-**--json\_dir** LabelMe JSON files folder path.
 
-**--val\_size (Optional)** Validation dataset size, for example 0.2 means 20% for validation.
 
-**--test\_size (Optional)** Test dataset size, for example 0.2 means 20% for Test.
+```text
 
-**--json\_name (Optional)** Convert single LabelMe JSON file.
+options:
+  -h, --help            show this help message and exit
+  --json_dir JSON_DIR [JSON_DIR ...]
+                        Please input the path of the labelme json files.
+  --output OUTPUT       The output path.
+  --val_size [VAL_SIZE]
+                        Please input the validation dataset size, for example 0.1.
+  --test_size [TEST_SIZE]
+                        Please input the test dataset size, for example 0.1.
+  --link                Use a soft link for the image file to connect to the image source file instead of making a copy, which speeds up processing and
+                        saves disk space.
+  --rename              Rename the file name with uuid.
+  --output_format {bbox,polygon}
+                        The default output format for labelme2yolo is "bbox[center_x,center_y,width,height]". However, you can choose to output in polygon
+                        format [points list] by specifying the "polygon" option.
+  --labels LABELS [LABELS ...]
+                        The labels you want to include, for example, --labels cat dog
+  --exclude_labels EXCLUDE_LABELS [EXCLUDE_LABELS ...]
+                        Excluding labels. for example, --exclude_labels cat dog
 
-**--output\_format (Optional)** The output format of label.
 
-**--label\_list (Optional)** The pre-assigned category labels.
+```
+
+
 
 ## How to Use
 
-### 1. Converting JSON files and splitting training, validation, and test datasets with --val\_size and --test\_size
-
-You may need to place all LabelMe JSON files under **labelme\_json\_dir** and then run the following command:
-
-```shell
-labelme2yolo --json_dir /path/to/labelme_json_dir/ --val_size 0.15 --test_size 0.15
-```
-
-This tool will generate dataset labels and images with YOLO format in different folders, such as
-
-```plaintext
-/path/to/labelme_json_dir/YOLODataset/labels/train/
-/path/to/labelme_json_dir/YOLODataset/labels/test/
-/path/to/labelme_json_dir/YOLODataset/labels/val/
-/path/to/labelme_json_dir/YOLODataset/images/train/
-/path/to/labelme_json_dir/YOLODataset/images/test/
-/path/to/labelme_json_dir/YOLODataset/images/val/
-
-/path/to/labelme_json_dir/YOLODataset/dataset.yaml
-```
-
-### 2. Converting JSON files and splitting training and validation datasets by folders
-
-If you have split the LabelMe training dataset and validation dataset on your own, please put these folders under **labelme\_json\_dir** as shown below:
-
-```plaintext
-/path/to/labelme_json_dir/train/
-/path/to/labelme_json_dir/val/
-```
-
-This tool will read the training and validation datasets by folder. You may run the following command to do this:
-
-```shell
-labelme2yolo --json_dir /path/to/labelme_json_dir/
-```
-
-This tool will generate dataset labels and images with YOLO format in different folders, such as
-
-```plaintext
-/path/to/labelme_json_dir/YOLODataset/labels/train/
-/path/to/labelme_json_dir/YOLODataset/labels/val/
-/path/to/labelme_json_dir/YOLODataset/images/train/
-/path/to/labelme_json_dir/YOLODataset/images/val/
-
-/path/to/labelme_json_dir/YOLODataset/dataset.yaml
-```
 
 ## How to build package/wheel
 
@@ -91,6 +96,44 @@ This tool will generate dataset labels and images with YOLO format in different 
 ```shell
 hatch build
 ```
+
+## 数据说明
+
+### labelme 输出的json文件格式
+```json5
+
+{
+  "version": "5.4.0.post1",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "cat",  // 标签名称
+      "points": [
+        [   // 对于矩形框(rectangle) 这是矩形左上角的坐标
+          153.0487804878049,  // 第1个点的x坐标
+          141.46341463414637  // 第1个点的y坐标
+        ],
+        [  // 对于矩形框(rectangle) 这是矩形右下角的坐标
+          749.0,  // 第2个点的x坐标
+          780.0696294079506  // 第2个点的y坐标
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "rectangle",  // 框的类型，有 circle、polygon 等
+      "flags": {},
+      "mask": null
+    }
+  ],
+  "imagePath": "0a16af6c15815a7deb95a8ad4b787c13.jpg",
+  "imageData": "图片本身的base64编码数据，可以依次还原成图片。",
+  "imageHeight": 1000,
+  "imageWidth": 750
+}
+```
+
+
+### yolo 
 
 ## License
 
