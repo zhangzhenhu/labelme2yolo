@@ -1,6 +1,6 @@
 # Labelme2YOLO
 
-**Forked from [rooneysh/Labelme2YOLO](https://github.com/rooneysh/Labelme2YOLO)**
+**Forked from [GreatV/Labelme2YOLO](https://github.com/GreatV/labelme2yolo)**
 
 [![PyPI - Version](https://img.shields.io/pypi/v/labelme2yolo.svg)](https://pypi.org/project/labelme2yolo)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/labelme2yolo?style=flat)
@@ -9,15 +9,18 @@
 
 Labelme2YOLO is a powerful tool for converting LabelMe's JSON format to [YOLOv5](https://github.com/ultralytics/yolov5) dataset format. This tool can also be used for YOLOv5/YOLOv8 segmentation datasets, if you have already made your segmentation dataset with LabelMe, it is easy to use this tool to help convert to YOLO format dataset.
 
+在原版基础上做了一些改进和优化
+
 ## New Features
 
+* 
 * export data as yolo polygon annotation (for YOLOv5 v7.0 segmentation)
 * Now you can choose the output format of the label text. The two available alternatives are `polygon` and bounding box (`bbox`).
 
 ## Installation
 
 ```shell
-pip install labelme2yolo
+pip install git+https://github.com/zhangzhenhu/labelme2yolo.git
 ```
 
 ## Arguments

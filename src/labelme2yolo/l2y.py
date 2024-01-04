@@ -330,30 +330,30 @@ class Labelme2YOLO:
         label_file_path = os.path.join(label_save_path, img_path.stem + ".txt")
         save_yolo_label(yolo_obj_list, label_file_path)
 
-    def convert_one(self, json_name):
-        """Convert one json file to yolo format text file and save them to files"""
-        json_path = os.path.join(self._json_dir, json_name)
-        with open(json_path, encoding="utf-8") as file:
-            json_data = json.load(file)
-
-        # image_name = json_name.replace(".json", ".png")
-        # label_name = json_name.replace(".json", ".txt")
-        # img_path = os.path.join(self._image_dir_path, image_name)
-        # label_path = os.path.join(self._image_dir_path, label_name)
-
-        img_path = save_yolo_image(
-            json_data,
-            json_dir=self._json_dir,
-            save_path=self._image_dir_path,
-            copy=self.copy_image,
-            rename=self.rename
-        )
-        yolo_obj_list = self._get_yolo_object_list(json_data, str(img_path))
-        label_file_path = os.path.join(self._label_dir_path, img_path.stem + ".txt")
-        save_yolo_label(yolo_obj_list, label_file_path)
-
-        # yolo_obj_list = self._get_yolo_object_list(json_data, img_path)
-        # save_yolo_label(yolo_obj_list, text_save_path=label_path)
+    # def convert_one(self, json_name):
+    #     """Convert one json file to yolo format text file and save them to files"""
+    #     json_path = os.path.join(self._json_dir, json_name)
+    #     with open(json_path, encoding="utf-8") as file:
+    #         json_data = json.load(file)
+    #
+    #     # image_name = json_name.replace(".json", ".png")
+    #     # label_name = json_name.replace(".json", ".txt")
+    #     # img_path = os.path.join(self._image_dir_path, image_name)
+    #     # label_path = os.path.join(self._image_dir_path, label_name)
+    #
+    #     img_path = save_yolo_image(
+    #         json_data,
+    #         json_dir=self._json_dir,
+    #         save_path=self._image_dir_path,
+    #         copy=self.copy_image,
+    #         rename=self.rename
+    #     )
+    #     yolo_obj_list = self._get_yolo_object_list(json_data, str(img_path))
+    #     label_file_path = os.path.join(self._label_dir_path, img_path.stem + ".txt")
+    #     save_yolo_label(yolo_obj_list, label_file_path)
+    #
+    #     # yolo_obj_list = self._get_yolo_object_list(json_data, img_path)
+    #     # save_yolo_label(yolo_obj_list, text_save_path=label_path)
 
     def _get_yolo_object_list(self, json_data, img_path):
         yolo_obj_list = []
@@ -377,7 +377,7 @@ class Labelme2YOLO:
                 logger.warning(f"Not support object shape {shape['shape_type']}")
                 continue
             if yolo_obj:
-                yolo_obj_list.append([label_id, ] + list(yolo_obj))
+                yolo_obj_list.append((label_id, list(yolo_obj)))
 
         return yolo_obj_list
 
