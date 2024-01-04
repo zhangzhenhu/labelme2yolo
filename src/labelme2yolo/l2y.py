@@ -1,9 +1,11 @@
 """
 Created on Aug 18, 2021
 
+@author: zhangzhenhu
 @author: xiaosonh
 @author: GreatV(Wang Xin)
 """
+from typing import List, Optional
 import base64
 import glob
 import io
@@ -21,6 +23,7 @@ import PIL.ImageOps
 import cv2
 import numpy as np
 import tqdm
+from pathlib import Path
 
 # set seed
 random.seed(12345678)
@@ -101,100 +104,174 @@ def img_data_to_png_data(img_data):
             return f_in.read()
 
 
-def extend_point_list(point_list, out_format="polygon"):
-    """Extend point list to polygon or bbox"""
-    x_min = min(float(point) for point in point_list[::2])
-    x_max = max(float(point) for point in point_list[::2])
-    y_min = min(float(point) for point in point_list[1::2])
-    y_max = max(float(point) for point in point_list[1::2])
+def rectangle2bbox(point_list: np.ndarray):
+    x_min = point_list[:, 0].min()
+    x_max = point_list[:, 0].max()
+    y_min = point_list[:, 1].min()
+    y_max = point_list[:, 1].max()
 
-    if out_format == "bbox":
-        x_i = x_min
-        y_i = y_min
-        w_i = x_max - x_min
-        h_i = y_max - y_min
-        x_i = x_i + w_i / 2
-        y_i = y_i + h_i / 2
-        return np.array([x_i, y_i, w_i, h_i])
-
-    return np.array([x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max])
+    x_i = x_min
+    y_i = y_min
+    w_i = x_max - x_min
+    h_i = y_max - y_min
+    x_i = x_i + w_i / 2
+    y_i = y_i + h_i / 2
+    return np.array([x_i, y_i, w_i, h_i])
 
 
-def save_yolo_label(obj_list, label_dir, target_dir, target_name):
+def circle2bbox(points: np.ndarray):
+    center_x, center_y = points[0]
+    margin_x, margin_y = points[1]
+    radius = math.sqrt(
+        (center_x - margin_x) ** 2
+        + (center_y - margin_y) ** 2
+    )
+    obj_w = 2 * radius
+    obj_h = 2 * radius
+    return np.asarray([center_x, center_y, obj_w, obj_h])
+
+
+def circle2polygon(points: np.ndarray):
+    center_x, center_y = points[0]
+    margin_x, margin_y = points[1]
+    radius = math.sqrt(
+        (center_x - margin_x) ** 2
+        + (center_y - margin_y) ** 2
+    )
+    # obj_w = 2 * radius
+    # obj_h = 2 * radius
+
+    x_min = center_x - radius
+    y_min = center_y - radius
+
+    x_max = center_x + radius
+    y_max = center_y + radius
+
+    return np.asarray([x_min, y_min, x_max, y_max])
+
+
+def polygon2bbox(points: np.ndarray):
+    x_min = points[:, 0].min()
+    x_max = points[:, 0].max()
+    y_min = points[:, 1].min()
+    y_max = points[:, 1].max()
+
+    x_i = x_min
+    y_i = y_min
+    w_i = x_max - x_min
+    h_i = y_max - y_min
+    x_i = x_i + w_i / 2
+    y_i = y_i + h_i / 2
+    return np.array([x_i, y_i, w_i, h_i])
+
+
+def to_polygon(shape_type, points: np.ndarray, ):
+    if shape_type == "circle":
+        return circle2polygon(points)
+    elif shape_type in {"rectangle", "polygon"}:
+        return points
+
+
+def to_bbox(shape_type, points: np.ndarray):
+    if shape_type == "circle":
+        return circle2bbox(points)
+    elif shape_type in {"rectangle", "polygon"}:
+        return polygon2bbox(points)
+
+
+def save_yolo_label(obj_list, text_file_path):
     """Save yolo label to txt file"""
-    txt_path = os.path.join(label_dir, target_dir, target_name)
+    # txt_path = os.path.join(label_dir, target_dir, target_name)
 
-    with open(txt_path, "w+", encoding="utf-8") as file:
+    with open(text_file_path, "w+", encoding="utf-8") as file:
         for label, points in obj_list:
             points = [str(item) for item in points]
             line = f"{label} {' '.join(points)}\n"
             file.write(line)
 
 
-def save_yolo_image(json_data, json_dir, image_dir, target_dir, target_name):
+def save_yolo_image(json_data, json_file, save_path, copy=True, rename=False):
     """Save yolo image to image_dir_path/target_dir"""
-    img_path = os.path.join(image_dir, target_dir, target_name)
-
-    if json_data["imageData"] is None:
-        image_name = json_data["imagePath"]
-        src_image_name = os.path.join(json_dir, image_name)
-        src_image = cv2.imread(src_image_name)
-        cv2.imwrite(img_path, src_image)
-    else:
+    json_dir = Path(json_file).parent
+    image_save_path = Path(save_path)
+    # windows path
+    if "\\" in json_data["imagePath"]:
+        json_data["imagePath"] = json_data["imagePath"].replace("\\", "/")
+    # image_file
+    if json_data["imagePath"] and os.path.exists(json_data["imagePath"]):  # json_data["imageData"] is None:
+        # src_file = Path()
+        src_path = json_dir.joinpath(json_data["imagePath"])
+        if rename:
+            filename: str = uuid.UUID(int=random.Random().getrandbits(128)).hex
+            # 重新命名
+            image_file_path = image_save_path / (filename + src_path.suffix)  # Path(image_save_path)
+        else:
+            # 保留原始文件名
+            image_file_path = image_save_path / src_path.name
+        # 复制一份图片
+        if copy:
+            shutil.copy(src_path.absolute(), image_file_path)
+        else:
+            os.symlink(src_path.absolute(), image_file_path)
+        return image_file_path
+    elif json_data["imageData"]:
         img = img_b64_to_arr(json_data["imageData"])
-        PIL.Image.fromarray(img).save(img_path)
-
-    return img_path
+        filename: str = uuid.UUID(int=random.Random().getrandbits(128)).hex
+        image_file_path = image_save_path / (filename + ".png")
+        PIL.Image.fromarray(img).save(image_save_path, formate="png")
+        return image_file_path
+    else:
+        raise RuntimeError("Can not find image file for " + str(json_file))
 
 
 class Labelme2YOLO:
     """Labelme to YOLO format converter"""
 
-    def __init__(self, json_dir, output_format, label_list):
-        self._json_dir = os.path.expanduser(json_dir)
+    def __init__(self, json_dirs: List,
+                 output_format,
+                 save_dir,
+                 copy_image=True,
+                 rename=False,
+                 # link=True,
+                 include_labels: Optional[List] = None,
+                 exclude_labels: Optional[List] = None,
+                 ):
+        self.json_dirs = json_dirs
+        # self._json_dir = os.path.expanduser(json_dir)
         self._output_format = output_format
         self._label_list = []
         self._label_id_map = {}
         self._label_dir_path = ""
-        self._image_dir_path = ""
-
-        if label_list:
-            self._label_list = label_list
+        self.copy_image = copy_image
+        self.rename = rename
+        self.save_dir = save_dir
+        self._image_dir_path = os.path.join(self.save_dir, "images")
+        # self.link = link
+        if include_labels:
+            self._label_list = include_labels
             self._label_id_map = {
-                label: label_id for label_id, label in enumerate(label_list)
+                label: label_id for label_id, label in enumerate(include_labels)
             }
+            self.frozen_labels = True
+        else:
+            self._label_list = []
+            self._label_id_map = {}
+            self.frozen_labels = False
 
-    def _update_id_map(self, label: str):
-        if label not in self._label_list:
-            self._label_list.append(label)
-            self._label_id_map[label] = len(self._label_id_map)
+        self.exclude_labels = set(exclude_labels) if exclude_labels else {}
 
-    def _make_train_val_dir(self):
-        self._label_dir_path = os.path.join(self._json_dir, "YOLODataset/labels/")
-        self._image_dir_path = os.path.join(self._json_dir, "YOLODataset/images/")
+    def get_label_id(self, label: str):
+        if label in self.exclude_labels:
+            return None
+        if label not in self._label_id_map and self.frozen_labels:
+            return None
+        if label in self._label_id_map:
+            return self._label_id_map[label]
 
-        for yolo_path in (
-            os.path.join(self._label_dir_path + "train/"),
-            os.path.join(self._label_dir_path + "val/"),
-            os.path.join(self._label_dir_path + "test/"),
-            os.path.join(self._image_dir_path + "train/"),
-            os.path.join(self._image_dir_path + "val/"),
-            os.path.join(self._image_dir_path + "test/"),
-        ):
-            if os.path.exists(yolo_path):
-                shutil.rmtree(yolo_path)
-
-            os.makedirs(yolo_path)
-
-    def _get_dataset_part_json_names(self, dataset_part: str):
-        """Get json names in dataset_part folder"""
-        set_folder = os.path.join(self._json_dir, dataset_part)
-        json_names = []
-        for sample_name in os.listdir(set_folder):
-            set_dir = os.path.join(set_folder, sample_name)
-            if os.path.isdir(set_dir):
-                json_names.append(sample_name + ".json")
-        return json_names
+        label_id = len(self._label_id_map)
+        self._label_id_map[label] = label_id
+        self._label_list.append(label)
+        return label_id
 
     def _train_test_split(self, json_names, val_size, test_size):
         """Split json names to train, val, test"""
@@ -214,130 +291,122 @@ class Labelme2YOLO:
 
         return train_json_names, val_json_names, test_json_names
 
-    def convert(self, val_size, test_size):
+    # def conver(self):
+    def convert(self, val_size=None, test_size=None):
         """Convert labelme format to yolo format"""
-        json_names = glob.glob(
-            os.path.join(self._json_dir, "**", "*.json"), recursive=True
-        )
-        json_names = sorted(json_names)
-        train_json_names, val_json_names, test_json_names = self._train_test_split(
-            json_names, val_size, test_size
-        )
+        json_files = []
+        for json_dir in self.json_dirs:
+            if Path(json_dir).is_file():
+                json_files.append(json_dir)
+                continue
+            _json_names = glob.glob(
+                os.path.join(json_dir, "**", "*.json"), recursive=True
+            )
+            json_files.extend(_json_names)
+        # json_names = sorted(json_names)
+        if val_size or test_size:
+            train_json_names, val_json_names, test_json_names = self._train_test_split(
+                json_files, val_size, test_size
+            )
+            groups = ("train", "val", "test")
+            names = (train_json_names, val_json_names, test_json_names)
+        else:
+            groups = ("train",)
+            names = (json_files,)
 
-        self._make_train_val_dir()
+        self._label_dir_path = os.path.join(self.save_dir, "labels")
+        self._image_dir_path = os.path.join(self.save_dir, "images")
 
+        # self._make_train_val_dir()
+        for group_name in groups:
+            img_save_path = os.path.join(self._image_dir_path, group_name)
+            label_save_path = os.path.join(self._label_dir_path, group_name)
+            os.makedirs(img_save_path, exist_ok=True)
+            os.makedirs(label_save_path, exist_ok=True)
         # convert labelme object to yolo format object, and save them to files
         # also get image from labelme json file and save them under images folder
-        dirs = ("train/", "val/", "test/")
-        names = (train_json_names, val_json_names, test_json_names)
-        for target_dir, json_names in zip(dirs, names):
-            target_part = target_dir.replace("/", "")
-            logger.info("Converting %s set ...", target_part)
-            for json_name in tqdm.tqdm(json_names):
-                self.covert_json_to_text(target_dir, json_name)
+
+        for group_name, json_files in zip(groups, names):
+            # target_part = target_dir.replace("/", "")
+            # img_save_path = os.path.join(self._image_dir_path, group_name)
+            # label_save_path = os.path.join(self._label_dir_path, group_name)
+            # logger.info("Converting %s set ...", target_dir)
+            for json_file in tqdm.tqdm(json_files, total=len(json_files)):
+                self.covert_json_to_text(group_name, json_file)
 
         self._save_dataset_yaml()
 
-    def covert_json_to_text(self, target_dir, json_name):
+    def covert_json_to_text(self, group_name, json_file):
         """Convert json file to yolo format text file and save them to files"""
-        with open(json_name, encoding="utf-8") as file:
+        # json_file = Path(json_file)
+        with open(json_file, encoding="utf-8") as file:
             json_data = json.load(file)
 
-        filename: str = uuid.UUID(int=random.Random().getrandbits(128)).hex
-        image_name = f"{filename}.png"
-        label_name = f"{filename}.txt"
-        img_path = save_yolo_image(
-            json_data, self._json_dir, self._image_dir_path, target_dir, image_name
-        )
-        yolo_obj_list = self._get_yolo_object_list(json_data, img_path)
-        save_yolo_label(yolo_obj_list, self._label_dir_path, target_dir, label_name)
+        # filename: str = uuid.UUID(int=random.Random().getrandbits(128)).hex
+        # image_name = f"{filename}.png"
+        # label_name = f"{filename}.txt"
+        img_save_path = os.path.join(self._image_dir_path, group_name)
+        label_save_path = os.path.join(self._label_dir_path, group_name)
 
-    def convert_one(self, json_name):
-        """Convert one json file to yolo format text file and save them to files"""
-        json_path = os.path.join(self._json_dir, json_name)
-        with open(json_path, encoding="utf-8") as file:
-            json_data = json.load(file)
-
-        image_name = json_name.replace(".json", ".png")
-        label_name = json_name.replace(".json", ".txt")
         img_path = save_yolo_image(
-            json_data, self._json_dir, self._image_dir_path, "", image_name
+            json_data,
+            json_file=json_file,
+            save_path=img_save_path,
+            copy=self.copy_image,
+            rename=self.rename
         )
 
-        yolo_obj_list = self._get_yolo_object_list(json_data, img_path)
-        save_yolo_label(yolo_obj_list, self._label_dir_path, "", label_name)
+        yolo_obj_list = self._get_yolo_object_list(json_data, str(img_path))
+        label_file_path = os.path.join(label_save_path, img_path.stem + ".txt")
+        save_yolo_label(yolo_obj_list, label_file_path)
 
     def _get_yolo_object_list(self, json_data, img_path):
         yolo_obj_list = []
-
-        img_h, img_w, _ = cv2.imread(img_path).shape
+        img_h, img_w = json_data.get("imageHeight"), json_data.get("imageWidth")
+        if not img_h or not img_w:
+            img_h, img_w, _ = cv2.imread(img_path).shape
         for shape in json_data["shapes"]:
+            if shape['shape_type'] not in {"circle", "polygon", "rectangle"}:
+                logger.warning("UnSupported labelme shape_type: " + str(shape['shape_type']))
+                continue
+            if not shape["label"]:
+                continue
+            label = shape["label"]
+            label_id = self.get_label_id(label)
+            if label_id is None:
+                continue
+            # 所有的点
+            points = np.asarray(shape["points"], dtype=float)
+            if (points < 0).all():
+                logger.warning("Ignore this shape. Negative point values " + str(points))
+                continue
+            # 把像素坐标转换成比例
+            points[:, 0] /= float(img_w)
+            points[:, 1] /= float(img_h)
+            # 修正一下上下界
+            points = points.clip(min=0, max=1)
+
             # labelme circle shape is different from others
             # it only has 2 points, 1st is circle center, 2nd is drag end point
-            if shape["shape_type"] == "circle":
-                yolo_obj = self._get_circle_shape_yolo_object(shape, img_h, img_w)
+            if self._output_format == "bbox":
+                yolo_obj = to_bbox(shape_type=shape['shape_type'], points=points)
+            elif self._output_format == "polygon":
+                yolo_obj = to_polygon(shape_type=shape['shape_type'], points=points)
             else:
-                yolo_obj = self._get_other_shape_yolo_object(shape, img_h, img_w)
+                raise ValueError("Unknown output_format:" + self._output_format)
 
-            if yolo_obj:
-                yolo_obj_list.append(yolo_obj)
+            if yolo_obj is not None:
+                yolo_obj_list.append((label_id, yolo_obj.tolist()))
 
         return yolo_obj_list
 
-    def _get_circle_shape_yolo_object(self, shape, img_h, img_w):
-        obj_center_x, obj_center_y = shape["points"][0]
-
-        radius = math.sqrt(
-            (obj_center_x - shape["points"][1][0]) ** 2
-            + (obj_center_y - shape["points"][1][1]) ** 2
-        )
-        obj_w = 2 * radius
-        obj_h = 2 * radius
-
-        yolo_center_x = round(float(obj_center_x / img_w), 6)
-        yolo_center_y = round(float(obj_center_y / img_h), 6)
-        yolo_w = round(float(obj_w / img_w), 6)
-        yolo_h = round(float(obj_h / img_h), 6)
-
-        if shape["label"]:
-            label = shape["label"]
-            if label not in self._label_list:
-                self._update_id_map(label)
-            label_id = self._label_id_map[shape["label"]]
-
-            return label_id, yolo_center_x, yolo_center_y, yolo_w, yolo_h
-
-        return None
-
-    def _get_other_shape_yolo_object(self, shape, img_h, img_w):
-        point_list = shape["points"]
-        points = np.zeros(2 * len(point_list))
-        points[::2] = [float(point[0]) / img_w for point in point_list]
-        points[1::2] = [float(point[1]) / img_h for point in point_list]
-
-        if len(points) == 4:
-            if self._output_format == "polygon":
-                points = extend_point_list(points)
-            if self._output_format == "bbox":
-                points = extend_point_list(points, "bbox")
-
-        if shape["label"]:
-            label = shape["label"]
-            if label not in self._label_list:
-                self._update_id_map(label)
-            label_id = self._label_id_map[shape["label"]]
-
-            return label_id, points.tolist()
-
-        return None
-
     def _save_dataset_yaml(self):
-        yaml_path = os.path.join(self._json_dir, "YOLODataset/", "dataset.yaml")
-
+        yaml_path = os.path.join(self.save_dir, "dataset.yaml")
+        save_path = Path(self.save_dir).absolute()
         with open(yaml_path, "w+", encoding="utf-8") as yaml_file:
-            train_dir = os.path.join(self._image_dir_path, "train/")
-            val_dir = os.path.join(self._image_dir_path, "val/")
-            test_dir = os.path.join(self._image_dir_path, "test/")
+            train_dir = os.path.join("images", "train")
+            val_dir = os.path.join("images", "val")
+            test_dir = os.path.join("images", "test")
 
             names_str = ""
             for label, _ in self._label_id_map.items():
@@ -345,7 +414,10 @@ class Labelme2YOLO:
             names_str = names_str.rstrip(", ")
 
             content = (
-                f"train: {train_dir}\nval: {val_dir}\ntest: {test_dir}\n"
+                f"path: {save_path}\n"
+                f"train: {train_dir}\n"
+                f"val: {val_dir}\n"
+                f"test: {test_dir}\n"
                 f"nc: {len(self._label_id_map)}\n"
                 f"names: [{names_str}]"
             )
