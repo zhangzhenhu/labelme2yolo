@@ -18,10 +18,14 @@ def run():
         "--json_dir",
         type=str,
         nargs="+",
-        help="Please input the path of the labelme json files."
+        help="Please input the path of the labelme json files.",
+        required=True,
     )
     parser.add_argument(
-        "--output", type=str, help="The output path."
+        "--output",
+        type=str, help="The output path.",
+        required=True,
+
     )
     parser.add_argument(
         "--val_size",
@@ -56,8 +60,8 @@ def run():
         type=str,
         choices=["bbox", "polygon"],
         default="bbox",
-        help='The default output format for labelme2yolo is "polygon".'
-             ' However, you can choose to output in bbox format by specifying the "bbox" option.',
+        help='The default output format for labelme2yolo is "bbox[center_x,center_y,width,height]".'
+             ' However, you can choose to output in bbox format by specifying the "polygon[points list]" option.',
     )
     parser.add_argument(
         "--labels",
@@ -72,7 +76,7 @@ def run():
         nargs="+",
         # action="store_true",
         # default=False,
-        help="Excluding labels."
+        help="Excluding labels. for example --exclude_labels cat dog"
     )
 
     args = parser.parse_args()
@@ -80,7 +84,7 @@ def run():
     if not args.json_dir:
         parser.print_help()
         return 0
-    print(args.json_dir)
+    # print(args.json_dir)
     convertor = Labelme2YOLO(
         args.json_dir, args.output_format,
         include_labels=args.labels,
