@@ -59,52 +59,6 @@ pip install git+https://github.com/zhangzhenhu/labelme2yolo.git
 
 ## How to Use
 
-### 1. Converting JSON files and splitting training, validation, and test datasets with --val\_size and --test\_size
-
-You may need to place all LabelMe JSON files under **labelme\_json\_dir** and then run the following command:
-
-```shell
-labelme2yolo --json_dir /path/to/labelme_json_dir/ --val_size 0.15 --test_size 0.15
-```
-
-This tool will generate dataset labels and images with YOLO format in different folders, such as
-
-```plaintext
-/path/to/labelme_json_dir/YOLODataset/labels/train/
-/path/to/labelme_json_dir/YOLODataset/labels/test/
-/path/to/labelme_json_dir/YOLODataset/labels/val/
-/path/to/labelme_json_dir/YOLODataset/images/train/
-/path/to/labelme_json_dir/YOLODataset/images/test/
-/path/to/labelme_json_dir/YOLODataset/images/val/
-
-/path/to/labelme_json_dir/YOLODataset/dataset.yaml
-```
-
-### 2. Converting JSON files and splitting training and validation datasets by folders
-
-If you have split the LabelMe training dataset and validation dataset on your own, please put these folders under **labelme\_json\_dir** as shown below:
-
-```plaintext
-/path/to/labelme_json_dir/train/
-/path/to/labelme_json_dir/val/
-```
-
-This tool will read the training and validation datasets by folder. You may run the following command to do this:
-
-```shell
-labelme2yolo --json_dir /path/to/labelme_json_dir/
-```
-
-This tool will generate dataset labels and images with YOLO format in different folders, such as
-
-```plaintext
-/path/to/labelme_json_dir/YOLODataset/labels/train/
-/path/to/labelme_json_dir/YOLODataset/labels/val/
-/path/to/labelme_json_dir/YOLODataset/images/train/
-/path/to/labelme_json_dir/YOLODataset/images/val/
-
-/path/to/labelme_json_dir/YOLODataset/dataset.yaml
-```
 
 ## How to build package/wheel
 
