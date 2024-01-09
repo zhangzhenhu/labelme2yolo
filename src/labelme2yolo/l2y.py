@@ -194,35 +194,34 @@ def save_yolo_image(json_data, json_file, save_path, copy=True, rename=False):
     """Save yolo image to image_dir_path/target_dir"""
     json_dir = Path(json_file).parent
     image_save_path = Path(save_path)
-
+    # windows path
+    if "\\" in json_data["imagePath"]:
+        json_data["imagePath"] = json_data["imagePath"].replace("\\", "/")
     # image_file
-    if json_data["imageData"] is None:
+    if json_data["imagePath"] and os.path.exists(json_data["imagePath"]):  # json_data["imageData"] is None:
         # src_file = Path()
-        if "\\" in json_data["imagePath"]:
-            json_data["imagePath"] = json_data["imagePath"].replace("\\", "/")
         src_path = json_dir.joinpath(json_data["imagePath"])
+        if rename:
+            filename: str = uuid.UUID(int=random.Random().getrandbits(128)).hex
+            # 重新命名
+            image_file_path = image_save_path / (filename + src_path.suffix)  # Path(image_save_path)
+        else:
+            # 保留原始文件名
+            image_file_path = image_save_path / src_path.name
         # 复制一份图片
         if copy:
-            if rename:
-                filename: str = uuid.UUID(int=random.Random().getrandbits(128)).hex
-                # 重新命名
-                image_file_path = image_save_path / (filename + src_path.suffix)  # Path(image_save_path)
-            else:
-                # 保留原始文件名
-                image_file_path = image_save_path / src_path.name
-            shutil.copy(src_path, image_file_path)
-            return image_file_path
+            shutil.copy(src_path.absolute(), image_file_path)
         else:
-            return src_path
-
-        # src_image = cv2.imread(src_image_name)
-        # cv2.imwrite(image_save_path, src_image)
-    else:
+            os.symlink(src_path.absolute(), image_file_path)
+        return image_file_path
+    elif json_data["imageData"]:
         img = img_b64_to_arr(json_data["imageData"])
         filename: str = uuid.UUID(int=random.Random().getrandbits(128)).hex
         image_file_path = image_save_path / (filename + ".png")
         PIL.Image.fromarray(img).save(image_save_path, formate="png")
         return image_file_path
+    else:
+        raise RuntimeError("Can not find image file for " + str(json_file))
 
 
 class Labelme2YOLO:
@@ -231,7 +230,9 @@ class Labelme2YOLO:
     def __init__(self, json_dirs: List,
                  output_format,
                  save_dir,
-                 copy_image=True, rename=False,
+                 copy_image=True,
+                 rename=False,
+                 # link=True,
                  include_labels: Optional[List] = None,
                  exclude_labels: Optional[List] = None,
                  ):
@@ -245,6 +246,7 @@ class Labelme2YOLO:
         self.rename = rename
         self.save_dir = save_dir
         self._image_dir_path = os.path.join(self.save_dir, "images")
+        # self.link = link
         if include_labels:
             self._label_list = include_labels
             self._label_id_map = {
@@ -350,7 +352,8 @@ class Labelme2YOLO:
             json_data,
             json_file=json_file,
             save_path=img_save_path,
-            copy=self.copy_image, rename=self.rename
+            copy=self.copy_image,
+            rename=self.rename
         )
 
         yolo_obj_list = self._get_yolo_object_list(json_data, str(img_path))

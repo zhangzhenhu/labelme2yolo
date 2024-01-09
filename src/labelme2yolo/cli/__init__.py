@@ -49,11 +49,19 @@ def run():
     #     help="If you put json name, it would convert only one json file to YOLO.",
     # )
     parser.add_argument(
+        "--link",
+        # type=str,
+        action="store_true",
+        default=False,
+        help="Use a soft link for the image file to connect to the image source file instead of making a copy,"
+             " which speeds up processing and saves disk space."
+    )
+    parser.add_argument(
         "--rename",
         # type=str,
         action="store_true",
         default=False,
-        help="是否用uuid重新命名文件名称。"
+        help="Rename the file name with uuid."
     )
     parser.add_argument(
         "--output_format",
@@ -61,14 +69,14 @@ def run():
         choices=["bbox", "polygon"],
         default="bbox",
         help='The default output format for labelme2yolo is "bbox[center_x,center_y,width,height]".'
-             ' However, you can choose to output in bbox format by specifying the "polygon[points list]" option.',
+             ' However, you can choose to output in polygon format [points list] by specifying the "polygon" option.',
     )
     parser.add_argument(
         "--labels",
         type=str,
         nargs="+",
         default=None,
-        help="The labels you want to include, for example --labels cat dog",
+        help="The labels you want to include, for example, --labels cat dog",
         required=False,
     )
     parser.add_argument(
@@ -76,7 +84,7 @@ def run():
         nargs="+",
         # action="store_true",
         # default=False,
-        help="Excluding labels. for example --exclude_labels cat dog"
+        help="Excluding labels. for example, --exclude_labels cat dog"
     )
 
     args = parser.parse_args()
@@ -90,6 +98,7 @@ def run():
         include_labels=args.labels,
         save_dir=args.output,
         rename=args.rename,
+        copy_image=not args.link,
 
     )
 

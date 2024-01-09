@@ -12,9 +12,9 @@ it is easy to use this tool to help convert to YOLO format dataset.
 
 ## New Features
 
+本工具用于把 labelme 输出的 Json 格式标注样本转换成 YOLO 可用 TXT 格式样本。
 
-
-在原版基础上做了一些改进和优化
+从 GreatV/Labelme2YOLO Fork 而来，并在原版基础上做了一些改进和优化
 
 * `--json_dir` 参数可以输入多个路径（支持通配符）
 * 新增 `--output` 参数，可以指定输出路径
@@ -31,7 +31,17 @@ it is easy to use this tool to help convert to YOLO format dataset.
 pip install git+https://github.com/zhangzhenhu/labelme2yolo.git
 ```
 
+## 使用方法
+
+```shell
+ labelme2yolo --json_dir all_jsons/  ../tee/*/*/jsons/   --val_size 0.15  --output mydataset/
+ 
+```
+
 ## Arguments
+
+
+
 
 ```text
 
